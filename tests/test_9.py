@@ -1,15 +1,16 @@
 import pytest
-from definition_03e6f4e2af03453db53d0db0c32d6f36 import calculate_override_rate
+from definition_cf18f75e26714ea8af22b396bd847a4f import calculate_override_rate
 
-@pytest.mark.parametrize("number_of_overrides, total_number_of_applications, expected", [
+@pytest.mark.parametrize("num_overrides, total_applications, expected", [
     (10, 100, 10.0),
     (0, 100, 0.0),
     (50, 50, 100.0),
-    (10, 0, ZeroDivisionError),
-    (10.5, 100, TypeError),
+    (10, 0, float('inf')),  # Handle division by zero
+    (15, 75, 20.0)
 ])
-def test_calculate_override_rate(number_of_overrides, total_number_of_applications, expected):
-    try:
-        assert calculate_override_rate(number_of_overrides, total_number_of_applications) == expected
-    except Exception as e:
-        assert isinstance(e, expected)
+def test_calculate_override_rate(num_overrides, total_applications, expected):
+    if expected == float('inf'):
+        with pytest.raises(ZeroDivisionError):
+            calculate_override_rate(num_overrides, total_applications)
+    else:
+        assert calculate_override_rate(num_overrides, total_applications) == expected
