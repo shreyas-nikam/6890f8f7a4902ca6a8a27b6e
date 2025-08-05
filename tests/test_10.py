@@ -1,47 +1,47 @@
 import pytest
 import pandas as pd
-from definition_e5d24edb525849179f02050a048f98ca import generate_override_matrix
+from definition_67ec495cb0814796ba5677fa75db8bb5 import generate_override_matrix
 
 @pytest.fixture
-def sample_overrides_data():
-    data = {
-        'Grade_Change': [1, -1, 0, 2, -2, 1, 0],
-        'Override_Reason': ['Credit_Judgement', 'Data_Error', 'Model_Limitation', 'Credit_Judgement', 'Other', 'Model_Limitation', 'Data_Error']
-    }
+def sample_overrides():
+    data = {'grade_before': ['A', 'B', 'C', 'B', 'A'],
+            'grade_after': ['A', 'C', 'C', 'B', 'B'],
+            'reason_code': ['Reason1', 'Reason2', 'Reason1', 'Reason3', 'Reason2']}
     return pd.DataFrame(data)
 
-def test_generate_override_matrix_empty_data():
-    empty_df = pd.DataFrame({'Grade_Change': [], 'Override_Reason': []})
-    result = generate_override_matrix(empty_df)
+@pytest.fixture
+def grade_levels():
+    return ['A', 'B', 'C']
+
+@pytest.fixture
+def reason_codes():
+    return ['Reason1', 'Reason2', 'Reason3']
+
+
+def test_generate_override_matrix_typical(sample_overrides, grade_levels, reason_codes):
+    result = generate_override_matrix(sample_overrides, grade_levels, reason_codes)
     assert isinstance(result, pd.DataFrame)
-    assert result.empty
+    assert result.shape == (len(grade_levels), len(reason_codes))
 
-
-def test_generate_override_matrix_basic(sample_overrides_data):
-    result = generate_override_matrix(sample_overrides_data)
+def test_generate_override_matrix_empty_overrides(grade_levels, reason_codes):
+    empty_overrides = pd.DataFrame({'grade_before': [], 'grade_after': [], 'reason_code': []})
+    result = generate_override_matrix(empty_overrides, grade_levels, reason_codes)
     assert isinstance(result, pd.DataFrame)
-    assert not result.empty
-    assert 'Credit_Judgement' in result.columns
-    assert 1 in result.index
+    assert result.shape == (len(grade_levels), len(reason_codes))
+    assert (result.values == 0).all()
 
-def test_generate_override_matrix_nan_values():
-    data = {'Grade_Change': [1, -1, 0, float('nan')], 'Override_Reason': ['Credit_Judgement', 'Data_Error', 'Model_Limitation', 'Other']}
-    df = pd.DataFrame(data)
-    result = generate_override_matrix(df)
+def test_generate_override_matrix_empty_grade_levels(sample_overrides, reason_codes):
+    result = generate_override_matrix(sample_overrides, [], reason_codes)
     assert isinstance(result, pd.DataFrame)
+    assert result.empty #DataFrame should be empty if no Grade Level exists
 
-
-def test_generate_override_matrix_single_override_reason(sample_overrides_data):
-    data = {'Grade_Change': [1, -1, 0, 2, -2, 1, 0],
-            'Override_Reason': ['Credit_Judgement'] * 7}
-    df = pd.DataFrame(data)
-    result = generate_override_matrix(df)
+def test_generate_override_matrix_empty_reason_codes(sample_overrides, grade_levels):
+    result = generate_override_matrix(sample_overrides, grade_levels, [])
     assert isinstance(result, pd.DataFrame)
-    assert 'Credit_Judgement' in result.columns
-
-
-def test_generate_override_matrix_integer_grade_change(sample_overrides_data):
-    result = generate_override_matrix(sample_overrides_data)
+    assert result.empty #DataFrame should be empty if no Reason Code exists
+    
+def test_generate_override_matrix_unseen_grade_and_reason(sample_overrides, grade_levels, reason_codes):
+    sample_overrides.loc[len(sample_overrides.index)] = ['D', 'E', 'Reason4'] 
+    result = generate_override_matrix(sample_overrides, grade_levels, reason_codes)
     assert isinstance(result, pd.DataFrame)
-    assert all(isinstance(idx, (int)) for idx in result.index)
-
+    assert result.shape == (len(grade_levels), len(reason_codes)) #Check that dataframe shape still matches
