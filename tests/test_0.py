@@ -1,44 +1,41 @@
 import pytest
-from definition_014ce7ace23e43e9b8407555c0847b3f import load_model
+from definition_94b065cf5e47438ebd680c1976aa48d8 import load_model
+import pickle
+import os
 
-def test_load_model_valid_path(tmp_path):
-    # Create a dummy model file
-    model_path = tmp_path / "test_model.pkl"
+@pytest.fixture
+def dummy_model_file(tmp_path):
+    model_path = tmp_path / "dummy_model.pkl"
     with open(model_path, "wb") as f:
-        import pickle
-        pickle.dump("test_model_content", f)  # Just dumping a string for simplicity
+        pickle.dump("dummy model", f)
+    return str(model_path)
 
-    # Load the model
-    model = load_model(str(model_path))
-    
-    # Verification - we can't verify the *model* itself, but we can verify that *something* was returned, and that
-    # it doesn't raise an exception during loading. A more sophisticated test would mock the unpickling process and 
-    # check the unpickled object.
-    assert model is not None
+def test_load_model_success(dummy_model_file):
+    model = load_model(dummy_model_file)
+    assert model == "dummy model"
 
-def test_load_model_invalid_path():
+def test_load_model_file_not_found():
     with pytest.raises(FileNotFoundError):
-        load_model("nonexistent_model.pkl")
+        load_model("non_existent_model.pkl")
+
+def test_load_model_invalid_file_type(tmp_path):
+    invalid_file_path = tmp_path / "invalid_file.txt"
+    with open(invalid_file_path, "w") as f:
+        f.write("Not a pickle file")
+    with pytest.raises(Exception): #Catching general exception because pickling error message varies.
+        load_model(str(invalid_file_path))
 
 def test_load_model_empty_path():
     with pytest.raises(TypeError):
         load_model(None)
-
-def test_load_model_corrupted_file(tmp_path):
-    # Create a corrupted model file
-    model_path = tmp_path / "corrupted_model.pkl"
-    with open(model_path, "w") as f:  # Write text to a .pkl file to corrupt it
-        f.write("This is not a valid pickle file")
-
-    with pytest.raises(Exception):  # Catch broader exception like pickle.UnpicklingError
-        load_model(str(model_path))
-
-def test_load_model_incorrect_extension(tmp_path):
-     # Create a dummy model file with the wrong extension
-    model_path = tmp_path / "test_model.txt"
+        
+def test_load_model_incorrect_permissions(tmp_path):
+    model_path = tmp_path / "no_permission_model.pkl"
     with open(model_path, "wb") as f:
-        import pickle
-        pickle.dump("test_model_content", f) 
-
-    with pytest.raises(Exception): #Expecting pickle related exception
-        load_model(str(model_path))
+        pickle.dump("dummy model", f)
+    os.chmod(model_path, 0o000)  # Remove all permissions
+    try:
+        with pytest.raises(PermissionError):
+            load_model(str(model_path))
+    finally:
+        os.chmod(model_path, 0o777) # Restore permissions to avoid affecting other tests/system
