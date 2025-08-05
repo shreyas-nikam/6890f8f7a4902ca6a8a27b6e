@@ -1,40 +1,43 @@
 import pytest
 import pandas as pd
-import numpy as np
-from definition_0142a7e5130546a3ac1f623988aa7b7b import compute_psi
+from definition_147aa61e8dcb4a0cab35e17be8ba3e9c import compute_psi
 
 @pytest.fixture
 def sample_data():
     expected = pd.Series([0.2, 0.3, 0.5], index=['A', 'B', 'C'])
-    actual = pd.Series([0.25, 0.25, 0.5], index=['A', 'B', 'C'])
-    return expected, actual
+    actual = pd.Series([0.25, 0.35, 0.4], index=['A', 'B', 'C'])
+    grade_names = ['A', 'B', 'C']
+    return expected, actual, grade_names
 
-def test_compute_psi_valid_input(sample_data):
-    expected, actual = sample_data
-    psi = compute_psi(expected, actual)
-    assert isinstance(psi, pd.Series)
-    assert not psi.empty
+def test_compute_psi_typical(sample_data):
+    expected, actual, grade_names = sample_data
+    result = compute_psi(expected, actual, grade_names)
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) == len(grade_names)
+    assert 'PSI' in result.columns
 
-def test_compute_psi_identical_distributions(sample_data):
-    expected, _ = sample_data
+
+def test_compute_psi_no_change(sample_data):
+    expected, _, grade_names = sample_data
     actual = expected.copy()
-    psi = compute_psi(expected, actual)
-    assert all(psi == 0)
+    result = compute_psi(expected, actual, grade_names)
+    assert all(result['PSI'] == 0)
 
-def test_compute_psi_zero_expected_probability(sample_data):
-    expected, actual = sample_data
+def test_compute_psi_zero_expected(sample_data):
+    expected, actual, grade_names = sample_data
     expected['A'] = 0.0
     with pytest.raises(ValueError):
-        compute_psi(expected, actual)
+        compute_psi(expected, actual, grade_names)
 
-def test_compute_psi_zero_actual_probability(sample_data):
-    expected, actual = sample_data
+def test_compute_psi_zero_actual(sample_data):
+    expected, actual, grade_names = sample_data
     actual['A'] = 0.0
-    psi = compute_psi(expected, actual)
-    assert not np.isnan(psi['A'])
-    
-def test_compute_psi_different_categories(sample_data):
-    expected, actual = sample_data
-    actual['D'] = 0.1  # Introduce a new category in actual
     with pytest.raises(ValueError):
-        compute_psi(expected, actual)
+        compute_psi(expected, actual, grade_names)
+
+def test_compute_psi_mismatched_grades(sample_data):
+    expected, actual, grade_names = sample_data
+    actual = pd.Series([0.25, 0.35, 0.4, 0.0], index=['A', 'B', 'C', 'D'])
+    grade_names = ['A', 'B', 'C', 'D'] # added D although not present in expected
+    with pytest.raises(ValueError):
+        compute_psi(expected, actual, grade_names)
