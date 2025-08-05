@@ -1,33 +1,34 @@
 import pytest
-from definition_aa7192252c944794af5ed07a36e4dd09 import alert_on_performance_degradation
 import logging
+from definition_20b4ac8d81f241148228d1efaef8c2d1 import raise_alerts
 
-@pytest.fixture(autouse=True)
-def enable_logging(caplog):
+@pytest.fixture
+def log_capture(caplog):
     caplog.set_level(logging.WARNING)
+    return caplog
 
-def test_no_alert(caplog):
-    alert_on_performance_degradation(0.05, 0.05, 0.05)
-    assert len(caplog.records) == 0
+def test_no_alerts(log_capture):
+    raise_alerts(0.05, 0.05, 0.05)
+    assert not log_capture.records
 
-def test_auc_drop_alert(caplog):
-    alert_on_performance_degradation(0.15, 0.05, 0.05)
-    assert len(caplog.records) == 1
-    assert "AUC drop is above threshold" in caplog.text
+def test_auc_drop_alert(log_capture):
+    raise_alerts(0.15, 0.05, 0.05)
+    assert len(log_capture.records) == 1
+    assert "AUC drop" in log_capture.text
 
-def test_psi_alert(caplog):
-    alert_on_performance_degradation(0.05, 0.15, 0.05)
-    assert len(caplog.records) == 1
-    assert "PSI is above threshold" in caplog.text
+def test_psi_alert(log_capture):
+    raise_alerts(0.05, 0.15, 0.05)
+    assert len(log_capture.records) == 1
+    assert "PSI" in log_capture.text
 
-def test_override_rate_alert(caplog):
-    alert_on_performance_degradation(0.05, 0.05, 0.15)
-    assert len(caplog.records) == 1
-    assert "Override rate is above threshold" in caplog.text
+def test_override_rate_alert(log_capture):
+    raise_alerts(0.05, 0.05, 0.15)
+    assert len(log_capture.records) == 1
+    assert "Override rate" in log_capture.text
 
-def test_multiple_alerts(caplog):
-    alert_on_performance_degradation(0.15, 0.15, 0.15)
-    assert len(caplog.records) == 3
-    assert "AUC drop is above threshold" in caplog.text
-    assert "PSI is above threshold" in caplog.text
-    assert "Override rate is above threshold" in caplog.text
+def test_multiple_alerts(log_capture):
+    raise_alerts(0.15, 0.15, 0.15)
+    assert len(log_capture.records) == 3
+    assert "AUC drop" in log_capture.text
+    assert "PSI" in log_capture.text
+    assert "Override rate" in log_capture.text
