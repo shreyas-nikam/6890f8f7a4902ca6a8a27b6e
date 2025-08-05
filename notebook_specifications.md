@@ -22,6 +22,31 @@ Upon completion of this notebook, users will be able to:
 *   Register the model in the enterprise model inventory.
 *   Formulate remediation plans when tests fail or governance triggers fire.
 
+**Dataset to build upon**
+
+*   **Input:**
+    *   UCI Taiwan Credit Default dataset (CSV format).
+    *   Install the library and import the dataset using the following code:
+```
+pip install ucimlrepo
+
+from ucimlrepo import fetch_ucirepo 
+  
+# fetch dataset 
+default_of_credit_card_clients = fetch_ucirepo(id=350) 
+  
+# data (as pandas dataframes) 
+X = default_of_credit_card_clients.data.features 
+y = default_of_credit_card_clients.data.targets 
+  
+# metadata 
+print(default_of_credit_card_clients.metadata) 
+  
+# variable information 
+print(default_of_credit_card_clients.variables) 
+
+```
+
 ## 2. Mathematical and Theoretical Foundations
 
 ### 2.1. Population Stability Index (PSI)
@@ -114,6 +139,7 @@ A high override rate may indicate issues with the model's accuracy, relevance, o
 *   Quarterly portfolio snapshots in `.csv` format (`snap_YYYYQ.csv`).
 *   Override log in `.csv` format (`overrides.csv`).
 *   Model inventory record template in `.yaml` format (`model_inventory_entry.yaml`).
+*   Do not use dummy variables. These files must be uploaded as the first step.
 
 **Outputs:**
 
@@ -180,3 +206,64 @@ The notebook will generate the following visualizations:
 *   **Override Reason Codes:** Define a clear set of override reason codes for the override matrix.
 *   **Assumptions:** Assume that the input datasets have consistent schemas. Assume that thresholds such as acceptable Gini, PSI, and override rates are provided by the user or defined in a configuration file.
 
+Validation and Monitoring:
+Discriminatory Power: Evaluate the model’s ability to rank-order risk by calculating the Area Under
+the ROC Curve (AUC) and Gini coefficient on both the development and validation samples. High
+AUC/Gini values (closer to 1/100% for Gini) indicate strong discriminatory power. Track these metrics
+over time with each model refresh or as new data comes in. The guidance suggests monitoring if
+there is any decline in discriminatory power as time passes . For example, if the Gini was 60%
+at development but after a year of new data drops to 50%, that could indicate model performance
+deterioration due to changes in portfolio or environment. We will implement an ongoing tracking
+procedure to measure AUC/Gini on a rolling basis (e.g. quarterly) and raise alerts if performance falls
+outside approved thresholds.
+
+Calibration Accuracy: Conduct thorough calibration tests. One approach is using the Hosmer–
+Lemeshow test, which groups obligors by PD ranges (deciles or rating grades) and compares the
+predicted vs. actual default counts in each group. Another approach is to plot calibration curves: for
+each rating grade, compare the average predicted PD to the observed default rate. Ideally, points
+should lie near the 45° line (prediction = actual). The case study will set acceptable tolerance levels
+(for instance, if any grade’s actual default rate differs from predicted by more than, say, ±50% in
+relative terms and is statistically significant, it’s a red flag). Back-testing procedures will be
+formalized: for each observation period, check that realized 1-year defaults for each grade fall within
+an expected confidence interval around the predicted PD . If a material deviation is detected
+(e.g. grade B was predicted 2% PD but realized 5% defaults), the model validation team will
+investigate causes – possibly the model needs recalibration or the portfolio mix shifted. Significant
+calibration deviations trigger model recalibration or redevelopment as per policy.
+Override Monitoring: Implement an override log and monitoring process. Every time a credit
+officer overrides the model-generated rating (up or down), the override is logged with details: the
+original model rating, the final manual rating, the reason (e.g. "recent negative news not in model"),
+and approver identity . Periodically analyze this override data. The case study will produce an
+"override matrix" summarizing overrides by reason and magnitude (number of notches). A high
+frequency of overrides, or systematic bias in one direction (e.g. model ratings always being adjusted
+downward), may indicate model shortcomings or miscalibration. Governance will review override
+statistics quarterly. According to best practices, if overrides exceed a certain threshold (for instance,
+more than 10% of all ratings are overridden in a period), it should prompt a review of the model or
+the override policy. This helps ensure the model remains a useful tool and that any expert
+adjustments are exceptions driven by special cases, not the norm.
+Population Stability & Sensitivity: Use Population Stability Index (PSI) or similar metrics to
+monitor changes in the distribution of obligors across rating grades over time. The PSI will flag if the
+portfolio characteristics drift significantly from the development sample – for example, if suddenly
+many obligors concentrate in worse grades, or a new type of obligor enters the portfolio, etc. This
+feeds into model monitoring; a large shift might require re-segmentation or re-estimating the
+model. Additionally, perform sensitivity analysis on the model. This involves perturbing key inputs
+slightly (e.g. increasing a borrower’s leverage ratio by 5% and seeing if the rating changes) to assess
+model stability . The rating model should not be overly fragile to minor data changes. Sensitivity
+testing also helps in understanding which variables have the most impact on the rating outcome. All
+these tests ensure the model is robust and stable in use.
+
+Governance and Inventory: Integrate the model into the bank’s Model Risk Management
+framework. This includes entering the model into the enterprise model inventory with a unique
+model ID, recording the model owner (e.g. Head of Credit Risk Analytics), the model validator
+(independent validation function), and key dates (development, last validated, next scheduled
+validation) . The model should have an assigned Tier or materiality level based on exposure and
+usage; this determines the level of oversight. For instance, a high-tier model would require annual
+validation and board-level reporting. Establish a regular review cycle (at least annual model
+performance review, with interim reviews if conditions change). The case study will produce a model
+validation report after development and each annual validation. This report will summarize data
+used, model design, validation tests performed (with results of discrimination, calibration, etc.), and
+any recommendations for improvements . It will also document compliance with the bank’s
+policies and any deviations. All validation findings should be reported to the Model Oversight
+Committee and remedial actions tracked to completion. By instituting strong governance –
+independent validation, clear documentation, ongoing monitoring, and oversight committee review
+– the rating model will meet the UAE Central Bank’s model management standards and the U.S. SR
+11-7 principles of effective challenge and control .
