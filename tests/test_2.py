@@ -1,37 +1,38 @@
 import pytest
 import pandas as pd
 from unittest.mock import MagicMock
-from definition_ee86eaf7692443f5aacbf091fc77b05c import apply_preprocessing
+from definition_2a3c494c17894ce5b64978145173e143 import apply_preprocessing
 
 def test_apply_preprocessing_empty_dataframe():
-    data = pd.DataFrame()
-    pipeline = MagicMock()
-    result = apply_preprocessing(data, pipeline)
+    pipeline_mock = MagicMock()
+    empty_df = pd.DataFrame()
+    result = apply_preprocessing(pipeline_mock, empty_df)
     assert isinstance(result, pd.DataFrame)
     assert result.empty
 
 def test_apply_preprocessing_pipeline_called():
+    pipeline_mock = MagicMock()
     data = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
-    pipeline = MagicMock()
-    apply_preprocessing(data, pipeline)
-    pipeline.transform.assert_called_once()
+    apply_preprocessing(pipeline_mock, data)
+    pipeline_mock.transform.assert_called_once_with(data)
 
-def test_apply_preprocessing_pipeline_returns_dataframe():
+def test_apply_preprocessing_returns_transformed_dataframe():
+    pipeline_mock = MagicMock()
     data = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
-    pipeline = MagicMock()
-    pipeline.transform.return_value = pd.DataFrame({'col1': [5, 6], 'col2': [7, 8]})
-    result = apply_preprocessing(data, pipeline)
-    assert isinstance(result, pd.DataFrame)
-    assert result.equals(pd.DataFrame({'col1': [5, 6], 'col2': [7, 8]}))
+    transformed_data = pd.DataFrame({'col1': [10, 20], 'col2': [30, 40]})
+    pipeline_mock.transform.return_value = transformed_data
+    result = apply_preprocessing(pipeline_mock, data)
+    pd.testing.assert_frame_equal(result, transformed_data)
 
-def test_apply_preprocessing_pipeline_raises_exception():
+def test_apply_preprocessing_pipeline_exception():
+    pipeline_mock = MagicMock()
     data = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
-    pipeline = MagicMock()
-    pipeline.transform.side_effect = ValueError("Test Exception")
-    with pytest.raises(ValueError, match="Test Exception"):
-        apply_preprocessing(data, pipeline)
+    pipeline_mock.transform.side_effect = ValueError("Pipeline failed")
+    with pytest.raises(ValueError, match="Pipeline failed"):
+        apply_preprocessing(pipeline_mock, data)
 
-def test_apply_preprocessing_none_pipeline():
-    data = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
-    with pytest.raises(TypeError):
-        apply_preprocessing(data, None)
+def test_apply_preprocessing_data_not_dataframe():
+   pipeline_mock = MagicMock()
+   with pytest.raises(TypeError):
+        apply_preprocessing(pipeline_mock, [1,2,3])
+
